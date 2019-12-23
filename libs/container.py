@@ -43,7 +43,7 @@ def read(path):
     for fpath in glob.glob(os.path.join(path, "*.npy")):
         fname = os.path.basename(fpath).split("_", 1)[0]
         key = os.path.splitext(fname)[0]
-        print "Loading '{}'...".format(fpath)
+        print("Loading '{}'...".format(fpath))
         data[key] = pd.DataFrame(np.load(fpath))
     return Container(data)
         

@@ -99,7 +99,7 @@ def sample(df, n):
     print("Subsampling unknown of {} by tile".format(n))
     pcls = [df[df.cls == 1].copy()]
     ncls = [
-         tdf.sample(n).copy()
+         tdf.sample(n, random_state=42).copy()
          for t, tdf in df[df.cls == 0].groupby("tile")]
     return pd.concat(pcls + ncls, ignore_index=True)
 

@@ -116,9 +116,9 @@ class WithAnotherExperiment(Experiment):
                     'train_name': " + ".join(train_name)})
 
                 if self.verbose:
-                    print "{} (TRAIN) Vs. {} (TEST)".format(rst.train_name, rst.test_name)
-                    print metrics.classification_report(rst.y_test, rst.predictions)
-                    print "-" * 80
+                    print("{} (TRAIN) Vs. {} (TEST)".format(rst.train_name, rst.test_name))
+                    print(metrics.classification_report(rst.y_test, rst.predictions))
+                    print("-" * 80)
                 results.append(rst)
         return tuple(results)
 
@@ -169,8 +169,8 @@ class KFoldExperiment(Experiment):
         roc_auc = metrics.auc(fpr, tpr)
 
         if self.verbose:
-            print metrics.classification_report(y_testing, predictions)
-            print "-" * 80
+            print(metrics.classification_report(y_testing, predictions))
+            print("-" * 80)
 
         return container.Container({
             "test_name": "kfold",
