@@ -24,7 +24,11 @@ COLUMNS_TO_REMOVE = [
     'Freq1_harmonics_rel_phase_0', 'Freq2_harmonics_rel_phase_0', 'Freq3_harmonics_rel_phase_0',
     "CAR_mean", "CAR_tau", "CAR_sigma"] 
 
-COLUMNS_NO_FEATURES = ['id', 'tile', 'cnt', 'ra_k', 'dec_k', 'vs_type', 'vs_catalog', 'cls'] 
+COLUMNS_NO_FEATURES = ['id', 'tile', 'cnt', 'ra_k', 'dec_k', 'vs_type', 'vs_catalog', 'cls']
+
+
+with open(BIN_PATH / "sampleids.pkl", "rb") as fp:
+    SAMPLES = pickle.load(fp)
 
 
 def create_dir(path):
@@ -95,13 +99,8 @@ def scale(df):
 
 
 def sample(df, n):
-    total_size = int(df.groupby("tile").id.count().mean())
-    print("Subsampling unknown of {} by tile".format(n))
-    pcls = [df[df.cls == 1].copy()]
-    ncls = [
-         tdf.sample(n, random_state=42).copy()
-         for t, tdf in df[df.cls == 0].groupby("tile")]
-    return pd.concat(pcls + ncls, ignore_index=True)
+    ids = SAMPLES[n]
+    return df[df.id.isin(ids)].copy()
 
 
 def store(obj, fname):
@@ -139,6 +138,14 @@ def build():
     s2_5k_scaler, s2_5k_scaled = scale(s2_5k)
     store(s2_5k_scaler, "scaler_s2_5k.pkl")
     store(s2_5k_scaled, "s2_5k_scaled.pkl.bz2")
+    
+    
+    sO2O = sample(s2_5k, "O2O")
+    store(sO2O, "sO2O.pkl.bz2")
+
+    sO2O_scaler, sO2O_scaled = scale(sO2O)
+    store(sO2O_scaler, "scaler_sO2O.pkl")
+    store(sO2O_scaled, "sO2O_scaled.pkl.bz2")
     
     
 if __name__ == "__main__":
