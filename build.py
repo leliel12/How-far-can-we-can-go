@@ -36,21 +36,14 @@ def create_dir(path):
     if path.is_dir():
         raise IOError("Please remove the directory {}".format(path))
     os.makedirs(str(path))
+
     
+
+def read_pickle(path):
+    df = pd.read_pickle(path)
+    df = df[[c for c in df.columns if c not in COLUMNS_TO_REMOVE]]
     
-def read_original_data():
-    print("Reading original files...")
-    with joblib.Parallel(backend="multiprocessing") as P:
-        df = pd.concat(
-            P(joblib.delayed(pd.read_pickle)(fn)
-             for fn in BIN_PATH.glob("*.pkl.bz2"))
-        )
-    return df
-
-
-def clean(df):
-    print("Removing bad rows")
-
+    # clean
     df = df.dropna()
 
     df = df[df.cnt >= 30]
@@ -62,28 +55,31 @@ def clean(df):
         df.n09_hk_color.between(-100, 100) &
         df.n09_jh_color.between(-100, 100) &
         df.n09_jk_color.between(-100, 100)]
-
+    
+    # features columns
+    features = [c for c in df.columns.values if c not in COLUMNS_NO_FEATURES]
+    features.sort()
+    
+    # to float32
+    df[features] = df[features].astype(np.float32)
+    
+    # reorder
+    order = COLUMNS_NO_FEATURES + features 
+    df = df[order]
+    
     df = df[~np.isinf(df.Period_fit.values)]
     df = df[~df.Gskew.isnull()]
-
-    print("Removing unused columns")
-
-    df = df[[c for c in df.columns if c not in COLUMNS_TO_REMOVE]]
+    
     return df
+    
 
-
-def reorder(df):
-    print("Reordering")
-    features = [c for c in df.columns.values if c not in COLUMNS_NO_FEATURES]
-    order = COLUMNS_NO_FEATURES + features 
-    return df[order]
-
-
-def to_int32(df):
-    print("To int32")
-    df = df.copy()
-    features = [c for c in df.columns if c not in COLUMNS_NO_FEATURES]
-    df[features] = df[features].astype(np.float32)
+def read_original_data():
+    print("Reading original files...")
+    with joblib.Parallel(backend="multiprocessing") as P:
+        parts = P(
+            joblib.delayed(read_pickle)(fn)
+            for fn in BIN_PATH.glob("*.pkl.bz2"))
+    df = pd.concat(parts, ignore_index=True)                                            
     return df
 
 
@@ -115,10 +111,8 @@ def store(obj, fname):
             
 def build():
     create_dir(DATA_PATH)
+    
     s20k = read_original_data()
-    s20k = clean(s20k)
-    s20k = reorder(s20k)
-    s20k = to_int32(s20k)  
     store(s20k, "s20k.pkl.bz2")
 
     s20k_scaler, s20k_scaled = scale(s20k)
