@@ -26,6 +26,8 @@ COLUMNS_TO_REMOVE = [
 
 COLUMNS_NO_FEATURES = ['id', 'tile', 'cnt', 'ra_k', 'dec_k', 'vs_type', 'vs_catalog', 'cls']
 
+FULL_DATA_PATH = "/home/jbcabral/carpyncho3/production_data/stored/light_curves/{}/features_{}.npy"
+
 
 with open(BIN_PATH / "sampleids.pkl", "rb") as fp:
     SAMPLES = pickle.load(fp)
@@ -38,9 +40,7 @@ def create_dir(path):
     os.makedirs(str(path))
 
     
-
-def read_pickle(path):
-    df = pd.read_pickle(path)
+def clean(df):
     df = df[[c for c in df.columns if c not in COLUMNS_TO_REMOVE]]
     
     # clean
@@ -69,19 +69,48 @@ def read_pickle(path):
     
     df = df[~np.isinf(df.Period_fit.values)]
     df = df[~df.Gskew.isnull()]
-    
     return df
-    
+
+
+def _read_original_parallel(path):
+    df = pd.read_pickle(path)
+    df = clean(df)
+    return df
 
 def read_original_data():
     print("Reading original files...")
     with joblib.Parallel(backend="multiprocessing") as P:
         parts = P(
-            joblib.delayed(read_pickle)(fn)
+            joblib.delayed(_read_original_parallel)(fn)
             for fn in BIN_PATH.glob("*.pkl.bz2"))
     df = pd.concat(parts, ignore_index=True)                                            
     return df
 
+
+
+def _read_full_parallel(tile):
+    df_path = FULL_DATA_PATH.format(tile, tile)
+    df = pd.DataFrame(np.load(df_path))
+    
+    df["tile"] = tile
+    df["vs_type"] = df.vs_type.str.decode("utf8")
+    df = df[(df.vs_type == "") | df.vs_type.str.startswith("RRLyr-")]
+    df["cls"] = df.vs_type.apply(lambda  vst: 0 if vst == "" else 1)
+    
+    df = clean(df)
+    return df
+
+def read_full_data(tiles):
+    print("Reading full files...")
+    with joblib.Parallel(backend="multiprocessing") as P:
+        parts = P(
+            joblib.delayed(_read_full_parallel)(tile)
+            for tile in tiles)
+    df = pd.concat(parts, ignore_index=True)                                            
+    return df
+    
+
+    
 
 def scale(df):
     print("Scaling")
@@ -133,13 +162,19 @@ def build():
     store(s2_5k_scaler, "scaler_s2_5k.pkl")
     store(s2_5k_scaled, "s2_5k_scaled.pkl.bz2")
     
-    
     sO2O = sample(s2_5k, "O2O")
     store(sO2O, "sO2O.pkl.bz2")
 
     sO2O_scaler, sO2O_scaled = scale(sO2O)
     store(sO2O_scaler, "scaler_sO2O.pkl")
     store(sO2O_scaled, "sO2O_scaled.pkl.bz2")
+    
+    full = read_full_data(['b234', 'b360', 'b278', 'b261'])
+    store(full, "full.pkl.bz2")
+    
+    full_scaler, full_scaled = scale(full)
+    store(full_scaler, "scaler_full.pkl")
+    store(full_scaled, "full_scaled.pkl.bz2")
     
     
 if __name__ == "__main__":
