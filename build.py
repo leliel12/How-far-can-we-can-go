@@ -18,11 +18,14 @@ BIN_PATH = PATH / "bin"
 
 DATA_PATH = PATH / "_data"
 
+CACHE_PATH = PATH / "_cache"
+
+
 COLUMNS_TO_REMOVE = [
     'scls_h', 'scls_j', 'scls_k',
     "AndersonDarling", "AmplitudeJ", "AmplitudeH", "AmplitudeJH", "AmplitudeJK",
     'Freq1_harmonics_rel_phase_0', 'Freq2_harmonics_rel_phase_0', 'Freq3_harmonics_rel_phase_0',
-    "CAR_mean", "CAR_tau", "CAR_sigma"] 
+    "CAR_mean", "CAR_tau", "CAR_sigma", "StetsonK", "Meanvariance"] 
 
 COLUMNS_NO_FEATURES = ['id', 'tile', 'cnt', 'ra_k', 'dec_k', 'vs_type', 'vs_catalog', 'cls']
 
@@ -46,9 +49,9 @@ def clean(df):
     # clean
     df = df.dropna()
 
-    df = df[df.cnt >= 30]
-
     df = df[
+        (df.cnt >= 30) &
+        df.Mean.between(12, 16.5, inclusive=False) &
         df.c89_hk_color.between(-100, 100) &
         df.c89_jh_color.between(-100, 100) &
         df.c89_jk_color.between(-100, 100) &
@@ -85,7 +88,6 @@ def read_original_data():
             for fn in BIN_PATH.glob("*.pkl.bz2"))
     df = pd.concat(parts, ignore_index=True)                                            
     return df
-
 
 
 def _read_full_parallel(tile):
@@ -140,6 +142,7 @@ def store(obj, fname):
             
 def build():
     create_dir(DATA_PATH)
+    create_dir(CACHE_PATH)
     
     s20k = read_original_data()
     store(s20k, "s20k.pkl.bz2")
