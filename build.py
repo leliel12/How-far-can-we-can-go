@@ -32,8 +32,11 @@ COLUMNS_NO_FEATURES = ['id', 'tile', 'cnt', 'ra_k', 'dec_k', 'vs_type', 'vs_cata
 FULL_DATA_PATH = "/home/jbcabral/carpyncho3/production_data/stored/light_curves/{}/features_{}.npy"
 
 
-with open(BIN_PATH / "sampleids.pkl", "rb") as fp:
-    SAMPLES = pickle.load(fp)
+SAMPLES = joblib.load(BIN_PATH / "sampleids.pkl")
+
+SAMPLES_2 = joblib.load(BIN_PATH / "sampleids2.pkl")
+
+SAMPLES_3 = joblib.load(BIN_PATH / "sampleids3.pkl")
 
 
 def create_dir(path):
@@ -75,19 +78,19 @@ def clean(df):
     return df
 
 
-def _read_original_parallel(path):
-    df = pd.read_pickle(path)
-    df = clean(df)
-    return df
+# def _read_original_parallel(path):
+#     df = pd.read_pickle(path)
+#     df = clean(df)
+#     return df
 
-def read_original_data():
-    print("Reading original files...")
-    with joblib.Parallel(backend="multiprocessing") as P:
-        parts = P(
-            joblib.delayed(_read_original_parallel)(fn)
-            for fn in BIN_PATH.glob("*.pkl.bz2"))
-    df = pd.concat(parts, ignore_index=True)                                            
-    return df
+# def read_original_data():
+#     print("Reading original files...")
+#     with joblib.Parallel(backend="multiprocessing") as P:
+#         parts = P(
+#             joblib.delayed(_read_original_parallel)(fn)
+#             for fn in BIN_PATH.glob("*.pkl.bz2"))
+#     df = pd.concat(parts, ignore_index=True)                                            
+#     return df
 
 
 def _read_full_parallel(tile):
@@ -113,7 +116,6 @@ def read_full_data(tiles):
     
 
     
-
 def scale(df):
     print("Scaling")
     df = df.copy()
@@ -125,59 +127,97 @@ def scale(df):
     return scaler, df
 
 
-def sample(df, n):
-    ids = SAMPLES[n]
+def sample(df, n, seeds):
+    ids = seeds[n]
     return df[df.id.isin(ids)].copy()
 
 
-def store(obj, fname):
+def store(obj, fname, subfolder):
     print("Storing {}...".format(fname))
-    store_path = DATA_PATH / fname
+    if subfolder is None:
+        store_path = DATA_PATH / fname
+    else:
+        store_path = DATA_PATH / subfolder / fname
+    
+    if not store_path.parent.is_dir():
+        store_path.parent.mkdir(parents=True)
+        
     if isinstance(obj, pd.DataFrame):
         obj.to_pickle(store_path, compression="bz2")
     else:
         with open(str(store_path), "wb") as fp:
             pickle.dump(obj, fp)
 
-            
-def build():
-    create_dir(DATA_PATH)
-    create_dir(CACHE_PATH)
+
+def _build_samples(full, seeds, subfolder):
+    # 20 mil
     
-    s20k = read_original_data()
-    store(s20k, "s20k.pkl.bz2")
-
+    s20k = sample(full, 20000, seeds=seeds)
     s20k_scaler, s20k_scaled = scale(s20k)
-    store(s20k_scaler, "scaler_s20k.pkl")
-    store(s20k_scaled, "s20k_scaled.pkl.bz2")
-
-    s5k = sample(s20k, 5000)
-    store(s5k, "s5k.pkl.bz2")
+    store(s20k_scaler, "scaler_s20k.pkl", subfolder=subfolder)
+    store(s20k_scaled, "s20k_scaled.pkl.bz2", subfolder=subfolder)
+    
+    # 5 mil
+    
+    s5k = sample(s20k, 5000, seeds=seeds)
+    store(s5k, "s5k.pkl.bz2", subfolder=subfolder)
 
     s5k_scaler, s5k_scaled = scale(s5k)
-    store(s5k_scaler, "scaler_s5k.pkl")
-    store(s5k_scaled, "s5k_scaled.pkl.bz2")
-
-    s2_5k = sample(s5k, 2500)
-    store(s2_5k, "s2_5k.pkl.bz2")
+    store(s5k_scaler, "scaler_s5k.pkl", subfolder=subfolder)
+    store(s5k_scaled, "s5k_scaled.pkl.bz2", subfolder=subfolder)
+    
+    # 2500
+    
+    s2_5k = sample(s5k, 2500, seeds=seeds)
+    store(s2_5k, "s2_5k.pkl.bz2", subfolder=subfolder)
 
     s2_5k_scaler, s2_5k_scaled = scale(s2_5k)
-    store(s2_5k_scaler, "scaler_s2_5k.pkl")
-    store(s2_5k_scaled, "s2_5k_scaled.pkl.bz2")
+    store(s2_5k_scaler, "scaler_s2_5k.pkl", subfolder=subfolder)
+    store(s2_5k_scaled, "s2_5k_scaled.pkl.bz2", subfolder=subfolder)
     
-    sO2O = sample(s2_5k, "O2O")
-    store(sO2O, "sO2O.pkl.bz2")
+    # uno a uno
+    
+    sO2O = sample(s2_5k, "O2O", seeds=seeds)
+    store(sO2O, "sO2O.pkl.bz2", subfolder=subfolder)
 
     sO2O_scaler, sO2O_scaled = scale(sO2O)
-    store(sO2O_scaler, "scaler_sO2O.pkl")
-    store(sO2O_scaled, "sO2O_scaled.pkl.bz2")
+    store(sO2O_scaler, "scaler_sO2O.pkl", subfolder=subfolder)
+    store(sO2O_scaled, "sO2O_scaled.pkl.bz2", subfolder=subfolder)
+    
+            
+            
+def build():
+#     if DATA_PATH.is_dir():
+#         raise IOError(f"Please remove the directory {DATA_PATH}")
+#     if CACHE_PATH.is_dir():
+#         raise IOError(f"Please remove the directory {CACHE_PATH}")
+    
+    # full
     
     full = read_full_data(['b234', 'b360', 'b278', 'b261'])
-    store(full, "full.pkl.bz2")
+#     store(full, "full.pkl.bz2", subfolder=None)
     
-    full_scaler, full_scaled = scale(full)
-    store(full_scaler, "scaler_full.pkl")
-    store(full_scaled, "full_scaled.pkl.bz2")
+#     full_scaler, full_scaled = scale(full)
+#     store(full_scaler, "scaler_full.pkl", subfolder=None)
+#     store(full_scaled, "full_scaled.pkl.bz2", subfolder=None)
+    
+    # Sampling
+    
+#     print(">>> Sample 1/3")
+#     _build_samples(full, seeds=SAMPLES, subfolder=None)
+    
+#     print(">>> Sample 2/3")
+#     _build_samples(full, seeds=SAMPLES_2, subfolder="data_2")
+    
+    print(">>> Sample 3/3")
+    _build_samples(full, seeds=SAMPLES_3, subfolder="data_3")
+    
+    
+    
+    
+
+    
+    
     
     
 if __name__ == "__main__":
