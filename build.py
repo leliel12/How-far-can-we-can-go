@@ -150,9 +150,19 @@ def store(obj, fname, subfolder):
 
 
 def _build_samples(full, seeds, subfolder):
-    # 20 mil
+    # 10 %
+    s10p = sample(full, 0.1, seeds=seeds)
+    store(s10p, "s10p.pkl.bz2", subfolder=subfolder)
     
-    s20k = sample(full, 20000, seeds=seeds)
+    s10p_scaler, s10p_scaled = scale(s10p)
+    store(s10p_scaler, "scaler_s10p.pkl", subfolder=subfolder)
+    store(s10p_scaled, "s10p_scaled.pkl.bz2", subfolder=subfolder)
+    
+    
+    # 20 mil
+    s20k = sample(s10p, 20000, seeds=seeds)
+    store(s20k, "s20k.pkl.bz2", subfolder=subfolder)
+    
     s20k_scaler, s20k_scaled = scale(s20k)
     store(s20k_scaler, "scaler_s20k.pkl", subfolder=subfolder)
     store(s20k_scaled, "s20k_scaled.pkl.bz2", subfolder=subfolder)
@@ -187,27 +197,27 @@ def _build_samples(full, seeds, subfolder):
             
             
 def build():
-#     if DATA_PATH.is_dir():
-#         raise IOError(f"Please remove the directory {DATA_PATH}")
-#     if CACHE_PATH.is_dir():
-#         raise IOError(f"Please remove the directory {CACHE_PATH}")
+    if DATA_PATH.is_dir():
+        raise IOError(f"Please remove the directory {DATA_PATH}")
+    if CACHE_PATH.is_dir():
+        raise IOError(f"Please remove the directory {CACHE_PATH}")
     
     # full
     
     full = read_full_data(['b234', 'b360', 'b278', 'b261'])
-#     store(full, "full.pkl.bz2", subfolder=None)
+    store(full, "full.pkl.bz2", subfolder=None)
     
-#     full_scaler, full_scaled = scale(full)
-#     store(full_scaler, "scaler_full.pkl", subfolder=None)
-#     store(full_scaled, "full_scaled.pkl.bz2", subfolder=None)
+    full_scaler, full_scaled = scale(full)
+    store(full_scaler, "scaler_full.pkl", subfolder=None)
+    store(full_scaled, "full_scaled.pkl.bz2", subfolder=None)
     
     # Sampling
     
-#     print(">>> Sample 1/3")
-#     _build_samples(full, seeds=SAMPLES, subfolder=None)
+    print(">>> Sample 1/3")
+    _build_samples(full, seeds=SAMPLES, subfolder=None)
     
-#     print(">>> Sample 2/3")
-#     _build_samples(full, seeds=SAMPLES_2, subfolder="data_2")
+    print(">>> Sample 2/3")
+    _build_samples(full, seeds=SAMPLES_2, subfolder="data_2")
     
     print(">>> Sample 3/3")
     _build_samples(full, seeds=SAMPLES_3, subfolder="data_3")
