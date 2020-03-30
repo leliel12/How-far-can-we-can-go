@@ -95,6 +95,7 @@ def clean(df):
 
 def _read_full_parallel(tile):
     df_path = FULL_DATA_PATH.format(tile, tile)
+    
     df = pd.DataFrame(np.load(df_path))
     
     df["tile"] = tile
@@ -103,6 +104,7 @@ def _read_full_parallel(tile):
     df["cls"] = df.vs_type.apply(lambda  vst: 0 if vst == "" else 1)
     
     df = clean(df)
+
     return df
 
 def read_full_data(tiles):
@@ -197,30 +199,33 @@ def _build_samples(full, seeds, subfolder):
             
             
 def build():
-    if DATA_PATH.is_dir():
-        raise IOError(f"Please remove the directory {DATA_PATH}")
-    if CACHE_PATH.is_dir():
-        raise IOError(f"Please remove the directory {CACHE_PATH}")
+#     if DATA_PATH.is_dir():
+#         raise IOError(f"Please remove the directory {DATA_PATH}")
+#     if CACHE_PATH.is_dir():
+#         raise IOError(f"Please remove the directory {CACHE_PATH}")
     
     # full
     
-    full = read_full_data(['b234', 'b360', 'b278', 'b261'])
+    full = read_full_data([
+        'b206', 'b214', 'b216', 'b220', 'b228', 'b234', 'b247', 'b248', 
+        'b261', 'b262', 'b263', 'b264', 'b277', 'b278', 'b360', 'b396'])
+    
     store(full, "full.pkl.bz2", subfolder=None)
     
     full_scaler, full_scaled = scale(full)
     store(full_scaler, "scaler_full.pkl", subfolder=None)
     store(full_scaled, "full_scaled.pkl.bz2", subfolder=None)
     
-    # Sampling
+#     # Sampling
     
-    print(">>> Sample 1/3")
-    _build_samples(full, seeds=SAMPLES, subfolder=None)
+#     print(">>> Sample 1/3")
+#     _build_samples(full, seeds=SAMPLES, subfolder=None)
     
-    print(">>> Sample 2/3")
-    _build_samples(full, seeds=SAMPLES_2, subfolder="data_2")
+#     print(">>> Sample 2/3")
+#     _build_samples(full, seeds=SAMPLES_2, subfolder="data_2")
     
-    print(">>> Sample 3/3")
-    _build_samples(full, seeds=SAMPLES_3, subfolder="data_3")
+#     print(">>> Sample 3/3")
+#     _build_samples(full, seeds=SAMPLES_3, subfolder="data_3")
     
     
     
