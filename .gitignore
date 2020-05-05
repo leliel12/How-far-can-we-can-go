@@ -132,3 +132,4 @@ dmypy.json
 # custom
 _data/*
 _cache/*
+bkp/*
